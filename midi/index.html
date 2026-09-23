@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ER-1 — notes vers pitch</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #12110e;
+      --panel: #1c1a16;
+      --line: #3a3428;
+      --text: #f3ead7;
+      --muted: #a39880;
+      --amber: #f0a202;
+      --amber-dim: #8a5e10;
+      --ok: #b6d38a;
+      --danger: #e07a5f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.45 "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--amber);
+    }
+    p { margin: 0; }
+    .lede { color: var(--muted); max-width: 62ch; }
+    section {
+      margin-top: 22px;
+      padding: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 180px;
+      flex: 1;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    input, select, button {
+      font: inherit;
+      color: var(--text);
+      background: #0e0d0b;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    button {
+      cursor: pointer;
+      background: var(--amber);
+      color: #1a1203;
+      border-color: transparent;
+      font-weight: 650;
+    }
+    button.ghost {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--line);
+      font-weight: 500;
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .status {
+      margin-top: 12px;
+      color: var(--ok);
+    }
+    .status.warn { color: var(--danger); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    th { color: var(--muted); font-size: 12px; font-weight: 600; }
+    td input[type="number"], td select { width: 88px; min-width: 0; }
+    .curve {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 8px;
+    }
+    .curve button {
+      background: #0e0d0b;
+      color: var(--text);
+      border: 1px solid var(--line);
+      font-weight: 500;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+    .curve button strong { color: var(--amber); font-size: 18px; }
+    .curve button span { color: var(--muted); font-size: 12px; }
+    #log {
+      margin: 0;
+      min-height: 88px;
+      max-height: 180px;
+      overflow: auto;
+      font: 13px/1.5 ui-monospace, monospace;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+    .help { margin-top: 10px; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>ER-1 — notes vers pitch</h1>
+    <p class="lede">Les synthés 1 à 4 écoutent chacun un canal du clavier. C0 part du Pitch 0, C8 arrive au Pitch 127, sur huit octaves. La page envoie le pitch, puis la note de trig déjà réglée dans la machine. Le firmware n’est pas modifié.</p>
+
+    <section>
+      <h2>Connexion</h2>
+      <div class="row">
+        <label>Entrée clavier
+          <select id="in-port"></select>
+        </label>
+        <label>Sortie vers l’ER-1
+          <select id="out-port"></select>
+        </label>
+        <label>Canal de l’ER-1
+          <input id="er-channel" type="number" min="1" max="16" value="10">
+        </label>
+        <label>Message de pitch
+          <select id="mode">
+            <option value="cc">CC Shaman</option>
+            <option value="nrpn">NRPN Korg</option>
+          </select>
+        </label>
+        <label>Délai avant le trig (ms)
+          <input id="delay" type="number" min="0" max="40" value="5">
+        </label>
+      </div>
+      <div class="row" style="margin-top: 12px">
+        <button id="connect" type="button">Activer le MIDI</button>
+        <button id="panic" class="ghost" type="button">Tout relâcher</button>
+      </div>
+      <p id="status" class="status">MIDI en attente.</p>
+      <p class="help">Sur l’ER-1 : filtre MIDI P et C sur « o », canal identique à celui choisi ici (10 par défaut). Les notes de trig d’usine sont C2, D2, E2 et F2. Chrome est nécessaire pour le MIDI.</p>
+    </section>
+
+    <section>
+      <h2>Parts</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Part</th>
+            <th>Actif</th>
+            <th>Canal clavier</th>
+            <th>Note de trig</th>
+          </tr>
+        </thead>
+        <tbody id="parts"></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Courbe</h2>
+      <div id="curve" class="curve"></div>
+      <p class="help">Un clic envoie la note sur le canal de la part sélectionnée, si une sortie MIDI est ouverte.</p>
+      <label style="margin-top: 12px; max-width: 220px">Part jouée par les touches
+        <select id="preview-part"></select>
+      </label>
+    </section>
+
+    <section>
+      <h2>Journal</h2>
+      <pre id="log"></pre>
+    </section>
+  </main>
+  <script type="module">
+    import { FACTORY_PARTS, noteName, noteToPitch } from "./pitch.mjs";
+    import { emptyState, route } from "./router.mjs";
+
+    const PREVIEW = [12, 24, 28, 33, 36, 40, 45, 48, 60, 108];
+    const storageKey = "er1-pitch-bridge";
+
+    const els = {
+      input: document.querySelector("#in-port"),
+      output: document.querySelector("#out-port"),
+      erChannel: document.querySelector("#er-channel"),
+      mode: document.querySelector("#mode"),
+      delay: document.querySelector("#delay"),
+      connect: document.querySelector("#connect"),
+      panic: document.querySelector("#panic"),
+      status: document.querySelector("#status"),
+      parts: document.querySelector("#parts"),
+      curve: document.querySelector("#curve"),
+      previewPart: document.querySelector("#preview-part"),
+      log: document.querySelector("#log"),
+    };
+
+    let access = null;
+    let input = null;
+    let output = null;
+    let state = emptyState();
+    const timers = new Set();
+
+    function loadSettings() {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveSettings() {
+      const saved = {
+        erChannel: Number(els.erChannel.value),
+        mode: els.mode.value,
+        delay: Number(els.delay.value),
+        inName: els.input.value,
+        outName: els.output.value,
+        previewPart: Number(els.previewPart.value),
+        parts: partConfig().map((part) => ({
+          enabled: part.enabled,
+          channel: part.channel,
+          trigger: part.trigger,
+        })),
+      };
+      localStorage.setItem(storageKey, JSON.stringify(saved));
+    }
+
+    const saved = loadSettings();
+    if (saved.erChannel) els.erChannel.value = saved.erChannel;
+    if (saved.mode) els.mode.value = saved.mode;
+    if (Number.isFinite(saved.delay)) els.delay.value = saved.delay;
+
+    function partConfig() {
+      return [...els.parts.querySelectorAll("tr")].map((row, index) => {
+        const factory = FACTORY_PARTS[index];
+        return {
+          enabled: row.querySelector(".enabled").checked,
+          channel: Number(row.querySelector(".channel").value),
+          trigger: Number(row.querySelector(".trigger").value),
+          cc: factory.cc,
+          nrpnLsb: factory.nrpnLsb,
+        };
+      });
+    }
+
+    function currentConfig() {
+      return {
+        erChannel: Number(els.erChannel.value) || 10,
+        mode: els.mode.value,
+        delayMs: Number(els.delay.value) || 0,
+        parts: partConfig(),
+      };
+    }
+
+    function renderParts() {
+      els.parts.replaceChildren();
+      els.previewPart.replaceChildren();
+      FACTORY_PARTS.forEach((part, index) => {
+        const stored = saved.parts?.[index] || {};
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${part.name}</td>
+          <td><input class="enabled" type="checkbox" checked></td>
+          <td><input class="channel" type="number" min="1" max="16" value="${stored.channel || part.channel}"></td>
+          <td><input class="trigger" type="number" min="0" max="127" value="${stored.trigger ?? part.trigger}"></td>
+        `;
+        if (stored.enabled === false) row.querySelector(".enabled").checked = false;
+        row.addEventListener("change", saveSettings);
+        els.parts.append(row);
+
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = part.name;
+        els.previewPart.append(option);
+      });
+      if (saved.previewPart != null) els.previewPart.value = String(saved.previewPart);
+    }
+
+    function renderCurve() {
+      els.curve.replaceChildren();
+      for (const note of PREVIEW) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.note = String(note);
+        const pitch = noteToPitch(note);
+        button.innerHTML = `<span>${noteName(note)}</span><strong data-pitch="${pitch}">${pitch}</strong>`;
+        button.addEventListener("click", () => preview(note));
+        els.curve.append(button);
+      }
+    }
+
+    function log(line) {
+      const stamp = new Date().toLocaleTimeString("fr-FR", { hour12: false });
+      els.log.textContent = `${stamp}  ${line}\n${els.log.textContent}`.slice(0, 4000);
+    }
+
+    function setStatus(text, warn) {
+      els.status.textContent = text;
+      els.status.classList.toggle("warn", Boolean(warn));
+    }
+
+    function fillPorts() {
+      const inputs = access ? [...access.inputs.values()] : [];
+      const outputs = access ? [...access.outputs.values()] : [];
+      fillSelect(els.input, inputs, saved.inName, "Aucune entrée");
+      fillSelect(els.output, outputs, saved.outName, "Aucune sortie");
+      attachPorts();
+    }
+
+    function fillSelect(select, ports, preferred, emptyLabel) {
+      const previous = select.value || preferred || "";
+      select.replaceChildren();
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = emptyLabel;
+      select.append(empty);
+      for (const port of ports) {
+        const option = document.createElement("option");
+        option.value = port.id;
+        option.textContent = port.name;
+        option.dataset.name = port.name;
+        select.append(option);
+      }
+      const match = [...select.options].find((option) => option.value === previous || option.dataset.name === previous);
+      if (match) select.value = match.value;
+    }
+
+    function attachPorts() {
+      if (input) input.onmidimessage = null;
+      input = access?.inputs.get(els.input.value) || null;
+      output = access?.outputs.get(els.output.value) || null;
+      if (input) input.onmidimessage = onMidi;
+      if (input && output && input.id === output.id) {
+        setStatus("L’entrée et la sortie sont le même port. Choisis le clavier d’un côté et l’ER-1 de l’autre.", true);
+        return;
+      }
+      if (output) setStatus(`Sortie ouverte : ${output.name}`);
+      else if (access) setStatus("MIDI actif. Choisis la sortie vers l’ER-1.", true);
+    }
+
+    function send(bytes) {
+      output?.send(bytes);
+    }
+
+    function dispatch(event) {
+      const config = currentConfig();
+      const result = route(state, event, config);
+      state = result.state;
+      for (const step of result.steps) {
+        const fire = () => {
+          for (const message of step.messages) send(message);
+        };
+        if (step.delay > 0) {
+          const timer = setTimeout(() => {
+            timers.delete(timer);
+            fire();
+          }, step.delay);
+          timers.add(timer);
+        } else {
+          fire();
+        }
+      }
+      if (result.steps.length) {
+        const part = config.parts.find((item) => item.enabled && item.channel === event.channel);
+        const pitch = event.note == null ? "" : ` pitch ${noteToPitch(event.note)}`;
+        log(`${event.type} ch ${event.channel} ${event.note == null ? "" : noteName(event.note)}${pitch} → ${part ? part.name : ""}`.trim());
+      }
+    }
+
+    function onMidi(message) {
+      const [status, data1, data2] = message.data;
+      const command = status & 0xf0;
+      const channel = (status & 0x0f) + 1;
+      if (command === 0x90 && data2 > 0) {
+        dispatch({ type: "on", channel, note: data1, velocity: data2 });
+      } else if (command === 0x80 || (command === 0x90 && data2 === 0)) {
+        dispatch({ type: "off", channel, note: data1 });
+      } else if (command === 0xb0 && (data1 === 123 || data1 === 120)) {
+        dispatch({ type: "panic", channel });
+      }
+    }
+
+    function preview(note) {
+      const index = Number(els.previewPart.value) || 0;
+      const part = partConfig()[index];
+      dispatch({ type: "on", channel: part.channel, note, velocity: 100 });
+      const timer = setTimeout(() => {
+        timers.delete(timer);
+        dispatch({ type: "off", channel: part.channel, note });
+      }, 180);
+      timers.add(timer);
+    }
+
+    function panic() {
+      for (const timer of timers) clearTimeout(timer);
+      timers.clear();
+      const config = currentConfig();
+      for (const part of config.parts) {
+        const result = route(state, { type: "panic", channel: part.channel }, config);
+        state = result.state;
+        for (const step of result.steps) {
+          for (const message of step.messages) send(message);
+        }
+      }
+      log("tout relâché");
+    }
+
+    async function connect() {
+      if (!navigator.requestMIDIAccess) {
+        setStatus("Ce navigateur ne donne pas accès au MIDI. Ouvre la page dans Chrome.", true);
+        return;
+      }
+      access = await navigator.requestMIDIAccess();
+      access.onstatechange = fillPorts;
+      fillPorts();
+      els.connect.disabled = true;
+      saveSettings();
+    }
+
+    els.connect.addEventListener("click", () => {
+      connect().catch((error) => setStatus(error.message, true));
+    });
+    els.panic.addEventListener("click", panic);
+    for (const el of [els.input, els.output, els.erChannel, els.mode, els.delay, els.previewPart]) {
+      el.addEventListener("change", () => {
+        saveSettings();
+        if (access) attachPorts();
+      });
+    }
+
+    renderParts();
+    renderCurve();
+  </script>
+</body>
+</html>
