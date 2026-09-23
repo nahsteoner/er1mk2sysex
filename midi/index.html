@@ -260,6 +260,7 @@
       return [...els.parts.querySelectorAll("tr")].map((row, index) => {
         const factory = FACTORY_PARTS[index];
         return {
+          name: factory.name,
           enabled: row.querySelector(".enabled").checked,
           channel: Number(row.querySelector(".channel").value),
           trigger: Number(row.querySelector(".trigger").value),
